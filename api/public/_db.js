@@ -1,29 +1,12 @@
-const DB_ID = "ff808181a09d98f701a0d33927480725";
-const API_URL = "https://api.restful-api.dev/objects/" + DB_ID;
+const g = globalThis;
+if (!g.__CSW_DB) g.__CSW_DB = getDefaultDb();
 
 export async function getDb() {
-  try {
-    const res = await fetch(API_URL, { cache: 'no-store' });
-    if (!res.ok) return getDefaultDb();
-    const json = await res.json();
-    return json.data || getDefaultDb();
-  } catch (e) {
-    return getDefaultDb();
-  }
+  return g.__CSW_DB;
 }
 
 export async function saveDb(data) {
-  try {
-    const res = await fetch(API_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: "cysaw_master_db", data }),
-      cache: 'no-store'
-    });
-    if (!res.ok) console.error('Save failed', await res.text());
-  } catch (e) {
-    console.error(e);
-  }
+  g.__CSW_DB = data;
 }
 
 function getDefaultDb() {
