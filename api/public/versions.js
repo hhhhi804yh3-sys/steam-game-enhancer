@@ -1,56 +1,63 @@
-import { getDb, saveDb } from './_db.js';
+﻿// In-memory store for versions
+const g = globalThis;
+if (!g.__CSW_VERSIONS__) {
+  g.__CSW_VERSIONS__ = new Map([
+    ["5.0.7", {
+      id: "v_5_0_7",
+      version: "5.0.7",
+      description: "Major Update v5.0.7: Added Session Persistence, Fixed Live Telemetry & Games Count, Enhanced Security & Obfuscation.",
+      changelog: null,
+      file_path: "https://github.com/hhhhi804yh3-sys/cyasw-tools-app/releases/download/v5.0.7/Cyasw-Tools-Pro-Setup.exe",
+      is_latest: true,
+      created_at: new Date().toISOString(),
+      file_size: 132265806
+    }]
+  ]);
+}
+if (!g.__CSW_LINKS__) g.__CSW_LINKS__ = { youtube_url: "https://www.youtube.com/watch?v=sgSFWb5-5tg", telegram_url: "https://t.me/cysawtools" };
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") return res.status(204).end();
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   
-  const db = await getDb();
+  if (req.method === "OPTIONS") return res.status(204).end();
 
+  // GET: Return all versions
   if (req.method === "GET") {
-    return res.status(200).json({ ok: true, versions: db.versions || [], links: db.links || {} });
+    const arr = Array.from(g.__CSW_VERSIONS__.values()).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    if (arr.length > 0) {
+      arr.forEach(v => v.is_latest = false);
+      arr[0].is_latest = true;
+    }
+    return res.status(200).json({ ok: true, versions: arr, links: g.__CSW_LINKS__ });
   }
 
+  // POST: Add a new version
   if (req.method === "POST") {
     try {
       const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
       
-      if (body.links) {
-        db.links = body.links;
-        await saveDb(db);
-        return res.status(200).json({ ok: true });
+      if (body.version) {
+        // mark others not latest
+        for (const [k, v] of g.__CSW_VERSIONS__.entries()) {
+          v.is_latest = false;
+        }
+        g.__CSW_VERSIONS__.set(body.version.version, {
+          ...body.version,
+          is_latest: true,
+          created_at: new Date().toISOString()
+        });
       }
 
-      if (body.version) {
-        if (!db.versions) db.versions = [];
-        if (body.version.is_latest) {
-          db.versions.forEach(v => v.is_latest = false);
-        }
-        
-        const existing = db.versions.findIndex(v => v.id === body.version.id);
-        if (existing >= 0) {
-          db.versions[existing] = { ...db.versions[existing], ...body.version };
-        } else {
-          db.versions.unshift(body.version);
-        }
-        await saveDb(db);
-        return res.status(200).json({ ok: true });
+      if (body.links) {
+        Object.assign(g.__CSW_LINKS__, body.links);
       }
+
+      return res.status(200).json({ ok: true });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
     }
   }
 
-  if (req.method === "DELETE") {
-    const id = req.query?.id;
-    if (id && db.versions) {
-      db.versions = db.versions.filter(v => v.id !== id);
-      await saveDb(db);
-    }
-    return res.status(200).json({ ok: true });
-  }
-
-  return res.status(405).json({ ok: false });
+  return res.status(405).json({ ok: false, error: "Method not allowed" });
 }
