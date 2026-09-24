@@ -139,18 +139,13 @@ function Dashboard() {
     e.preventDefault();
     setLinksMsg(null);
     try {
-      const { error } = await supabase.from("app_tutorials").upsert({
-        id: "default",
-        youtube_url: links.youtube_url || null,
-        telegram_url: links.telegram_url || null,
-        updated_at: new Date().toISOString()
+      await fetch('/api/public/versions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ links })
       });
-      if (error) throw error;
-      setLinksMsg("Links saved successfully ✓");
+      setLinksMsg("Links saved successfully!");
       setTimeout(() => setLinksMsg(null), 2500);
     } catch (e: unknown) {
-      setLinksMsg(e instanceof Error ? e.message : "Failed to save links");
-    }
   }
 
   if (isAdmin === null) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
