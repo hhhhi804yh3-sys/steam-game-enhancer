@@ -1,4 +1,4 @@
-import { getDb, saveDb } from './db.js';
+import { getDb, saveDb } from './_db.js';
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");

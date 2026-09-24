@@ -1,4 +1,4 @@
-import { getDb, saveDb } from '../db.js';
+import { getDb, saveDb } from '../_db.js';
 
 const MASTER_KEYS = new Set([
   "CYSAW-PREMIUM-2026-VIP1",
