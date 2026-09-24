@@ -1,3 +1,5 @@
+const STORE_URL = "https://api.restful-api.dev/objects";
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -13,12 +15,38 @@ export default async function handler(req, res) {
   }
 
   try {
-    const cfRes = await fetch(`https://cysaw-auth.hhhhi804yh7.workers.dev/api/public/session/status?token=${encodeURIComponent(token)}`, {
-      method: "GET"
+    const getRes = await fetch(`${STORE_URL}/${encodeURIComponent(token)}`);
+    if (getRes.status === 200) {
+      const item = await getRes.json();
+      const sessionData = item.data || {};
+
+      if (sessionData.status === "activated") {
+        return res.status(200).json({
+          ok: true,
+          status: "activated",
+          is_premium: sessionData.is_premium || false,
+          activated_at: sessionData.activated_at,
+          expires_at: sessionData.expires_at || new Date(Date.now() + 5 * 60 * 1000).toISOString()
+        });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        status: "pending",
+        is_premium: false,
+        activated_at: null,
+        expires_at: null
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      status: "pending"
     });
-    const data = await cfRes.json();
-    return res.status(200).json(data);
   } catch (err) {
-    return res.status(200).json({ ok: true, status: "pending" });
+    return res.status(200).json({
+      ok: true,
+      status: "pending"
+    });
   }
 }

@@ -6,6 +6,8 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, X-Api-Key, Authorization",
 };
 
+const STORE_URL = "https://api.restful-api.dev/objects";
+
 export const Route = createFileRoute("/api/public/session/activate")({
   server: {
     handlers: {
@@ -14,14 +16,32 @@ export const Route = createFileRoute("/api/public/session/activate")({
         try {
           const body = await request.json().catch(() => ({}));
           const token = typeof body?.token === "string" ? body.token.trim() : "";
-          const cfRes = await fetch("https://cysaw-auth.hhhhi804yh7.workers.dev/api/public/session/activate", {
-            method: "POST",
+          if (!token) {
+            return Response.json({ ok: false, error: "Token required" }, { status: 400, headers: CORS });
+          }
+
+          const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+          await fetch(`${STORE_URL}/${encodeURIComponent(token)}`, {
+            method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token }),
+            body: JSON.stringify({
+              name: "csw_session",
+              data: {
+                status: "activated",
+                activated_at: new Date().toISOString(),
+                expires_at: expiresAt,
+                is_premium: false,
+              },
+            }),
           });
-          const data = await cfRes.json();
-          return Response.json(data, { headers: CORS });
-        } catch (e: unknown) {
+
+          return Response.json({
+            ok: true,
+            status: "activated",
+            token,
+            expires_at: expiresAt,
+          }, { headers: CORS });
+        } catch {
           return Response.json({ ok: true, status: "activated" }, { headers: CORS });
         }
       },

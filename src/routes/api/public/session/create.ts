@@ -6,34 +6,44 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, X-Api-Key, Authorization",
 };
 
+const STORE_URL = "https://api.restful-api.dev/objects";
+
 export const Route = createFileRoute("/api/public/session/create")({
   server: {
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
-      POST: async ({ request }) => {
+      POST: async () => {
         try {
-          const body = await request.json().catch(() => ({}));
-          const cfRes = await fetch("https://cysaw-auth.hhhhi804yh7.workers.dev/api/public/session/create", {
+          const storeRes = await fetch(STORE_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body: JSON.stringify({
+              name: "csw_session",
+              data: {
+                status: "pending",
+                created_at: new Date().toISOString(),
+                expires_at: null,
+                is_premium: false,
+              },
+            }),
           });
-          const data = await cfRes.json();
-          if (data && data.token) {
-            data.activation_url = `https://cyaswtools.vercel.app/activate/${data.token}`;
-            data.duration_minutes = 5;
-          }
-          return Response.json(data, { headers: CORS });
-        } catch (e: unknown) {
-          const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-          let token = "";
-          for (let i = 0; i < 32; i++) token += chars.charAt(Math.floor(Math.random() * chars.length));
+          const storeData = await storeRes.json();
+          const token = storeData.id;
+          const activationUrl = `https://cyaswtools.vercel.app/activate/${token}`;
+
+          return Response.json({
+            ok: true,
+            token,
+            activation_url: activationUrl,
+            duration_minutes: 5,
+          }, { headers: CORS });
+        } catch {
+          const token = "csw_" + Math.random().toString(36).substring(2, 15);
           return Response.json({
             ok: true,
             token,
             activation_url: `https://cyaswtools.vercel.app/activate/${token}`,
             duration_minutes: 5,
-            expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
           }, { headers: CORS });
         }
       },

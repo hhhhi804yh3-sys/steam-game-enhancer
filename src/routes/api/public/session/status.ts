@@ -6,6 +6,8 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, X-Api-Key, Authorization",
 };
 
+const STORE_URL = "https://api.restful-api.dev/objects";
+
 export const Route = createFileRoute("/api/public/session/status")({
   server: {
     handlers: {
@@ -18,18 +20,33 @@ export const Route = createFileRoute("/api/public/session/status")({
             return Response.json({ ok: false, error: "Token required" }, { status: 400, headers: CORS });
           }
 
-          const cfRes = await fetch(`https://cysaw-auth.hhhhi804yh7.workers.dev/api/public/session/status?token=${encodeURIComponent(token)}`, {
-            method: "GET",
-          });
-          const data = await cfRes.json();
-          return Response.json(data, { headers: CORS });
-        } catch (e: unknown) {
-          return Response.json({
-            ok: true,
-            status: "pending",
-            activated_at: null,
-            expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-          }, { headers: CORS });
+          const getRes = await fetch(`${STORE_URL}/${encodeURIComponent(token)}`);
+          if (getRes.status === 200) {
+            const item = await getRes.json();
+            const sessionData = item.data || {};
+
+            if (sessionData.status === "activated") {
+              return Response.json({
+                ok: true,
+                status: "activated",
+                is_premium: sessionData.is_premium || false,
+                activated_at: sessionData.activated_at,
+                expires_at: sessionData.expires_at || new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+              }, { headers: CORS });
+            }
+
+            return Response.json({
+              ok: true,
+              status: "pending",
+              is_premium: false,
+              activated_at: null,
+              expires_at: null,
+            }, { headers: CORS });
+          }
+
+          return Response.json({ ok: true, status: "pending" }, { headers: CORS });
+        } catch {
+          return Response.json({ ok: true, status: "pending" }, { headers: CORS });
         }
       },
     },
