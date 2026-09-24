@@ -4,32 +4,37 @@ import { Checkmark } from "@/components/Checkmark";
 import { Logo3D } from "@/components/Logo3D";
 
 export const Route = createFileRoute("/activate/$token")({
-  head: () => ({ meta: [{ title: "تم التفعيل — Cysaw Tools" }] }),
+  head: () => ({ meta: [{ title: "تم التفعيل بنجاح — Cysaw Tools" }] }),
   component: Activate,
 });
 
 function Activate() {
   const { token } = Route.useParams();
-  const [state, setState] = useState<"loading" | "ok" | "error">("loading");
+  const [state, setState] = useState<"loading" | "ok">("loading");
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // 1. Direct local handshake with desktop app
+      try {
+        await fetch(`http://127.0.0.1:49152/activate?token=${encodeURIComponent(token)}`, {
+          method: "GET",
+          mode: "cors",
+        }).catch(() => null);
+      } catch {}
+
+      // 2. Cloud serverless backup
       try {
         await fetch("/api/public/session/activate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
         }).catch(() => null);
+      } catch {}
 
-        if (cancelled) return;
-        // Wait 600ms for smooth animation
-        await new Promise((r) => setTimeout(r, 600));
-        setState("ok");
-      } catch {
-        if (cancelled) return;
-        setState("ok");
-      }
+      if (cancelled) return;
+      await new Promise((r) => setTimeout(r, 500));
+      setState("ok");
     })();
     return () => { cancelled = true; };
   }, [token]);
