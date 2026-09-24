@@ -6,11 +6,6 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, X-Api-Key, Authorization",
 };
 
-// Global in-memory activated tokens tracker
-const g = globalThis as unknown as { __ACTIVATED_TOKENS__?: Set<string> };
-if (!g.__ACTIVATED_TOKENS__) g.__ACTIVATED_TOKENS__ = new Set();
-export const activatedTokens = g.__ACTIVATED_TOKENS__;
-
 export const Route = createFileRoute("/api/public/session/status")({
   server: {
     handlers: {
@@ -23,16 +18,11 @@ export const Route = createFileRoute("/api/public/session/status")({
             return Response.json({ ok: false, error: "Token required" }, { status: 400, headers: CORS });
           }
 
-          const isActivated = activatedTokens.has(token);
-          // Exactly 5 minutes duration
-          const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-
-          return Response.json({
-            ok: true,
-            status: isActivated ? "activated" : "pending",
-            activated_at: isActivated ? new Date().toISOString() : null,
-            expires_at: expiresAt,
-          }, { headers: CORS });
+          const cfRes = await fetch(`https://cysaw-auth.hhhhi804yh7.workers.dev/api/public/session/status?token=${encodeURIComponent(token)}`, {
+            method: "GET",
+          });
+          const data = await cfRes.json();
+          return Response.json(data, { headers: CORS });
         } catch (e: unknown) {
           return Response.json({
             ok: true,

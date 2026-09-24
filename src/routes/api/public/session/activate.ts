@@ -6,10 +6,6 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, X-Api-Key, Authorization",
 };
 
-const g = globalThis as unknown as { __ACTIVATED_TOKENS__?: Set<string> };
-if (!g.__ACTIVATED_TOKENS__) g.__ACTIVATED_TOKENS__ = new Set();
-const activatedTokens = g.__ACTIVATED_TOKENS__;
-
 export const Route = createFileRoute("/api/public/session/activate")({
   server: {
     handlers: {
@@ -18,10 +14,13 @@ export const Route = createFileRoute("/api/public/session/activate")({
         try {
           const body = await request.json().catch(() => ({}));
           const token = typeof body?.token === "string" ? body.token.trim() : "";
-          if (token) {
-            activatedTokens.add(token);
-          }
-          return Response.json({ ok: true, status: "activated" }, { headers: CORS });
+          const cfRes = await fetch("https://cysaw-auth.hhhhi804yh7.workers.dev/api/public/session/activate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          });
+          const data = await cfRes.json();
+          return Response.json(data, { headers: CORS });
         } catch (e: unknown) {
           return Response.json({ ok: true, status: "activated" }, { headers: CORS });
         }
