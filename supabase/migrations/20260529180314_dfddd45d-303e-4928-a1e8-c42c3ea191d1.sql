@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "public read latest tool build by exact path" ON storage.objects;
