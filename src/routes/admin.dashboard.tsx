@@ -21,6 +21,15 @@ function Dashboard() {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
+  async function fetchVersions() {
+    try {
+      const res = await fetch('/api/public/versions').then(r => r.json());
+      if (res && res.ok) {
+        setVersions(res.versions || []);
+        if (res.links) setLinks(res.links);
+      }
+    } catch {}
+  }
   const [counts, setCounts] = useState({ devices: 0, codes: 0, notifications: 0 });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -72,7 +81,7 @@ function Dashboard() {
       return;
     }
     setIsAdmin(true);
-    refresh();
+    refresh(); fetchVersions();
   }, [navigate, refresh]);
 
   function handleLogout() {
