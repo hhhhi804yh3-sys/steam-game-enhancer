@@ -15,7 +15,7 @@ export const Route = createFileRoute("/admin/dashboard")({
   component: Dashboard,
 });
 
-type Version = { id: string; version: string; description: string; changelog: string; file_path: string; is_latest: boolean; created_at: string; };
+type Version = { id: string; version: string; description: string; changelog: string; file_path: string; is_latest: boolean; created_at: string; file_size?: number; };
 
 function Dashboard() {
   const navigate = useNavigate();
