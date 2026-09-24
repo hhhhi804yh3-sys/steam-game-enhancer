@@ -13,7 +13,8 @@ export default async function handler(req, res) {
     token += chars.charAt(Math.floor(Math.random() * chars.length));
   }
 
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  // Exactly 15 minutes free session
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
   const origin = "https://cysawtools.vercel.app";
   const activationUrl = `${origin}/activate/${token}`;
 
