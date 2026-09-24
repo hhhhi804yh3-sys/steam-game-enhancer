@@ -130,12 +130,12 @@ function Dashboard() {
     }
 
   async function removeVersion(v: Version) {
-      if (!confirm(Delete v?)) return;
-      await fetch(/api/public/versions?id=, { method: 'DELETE' });
-      fetchVersions();
-    }
+          if (!confirm(`Delete v${v.version}?`)) return;
+    await fetch(`/api/public/versions?id=${v.id}`, { method: 'DELETE' });
+    fetchVersions();
+  }
 
-  async function saveLinks(e: React.FormEvent) {
+    async function saveLinks(e: React.FormEvent) {
     e.preventDefault();
     setLinksMsg(null);
     try {
@@ -146,6 +146,8 @@ function Dashboard() {
       setLinksMsg("Links saved successfully!");
       setTimeout(() => setLinksMsg(null), 2500);
     } catch (e: unknown) {
+      setLinksMsg(e instanceof Error ? e.message : "Failed to save links");
+    }
   }
 
   if (isAdmin === null) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
