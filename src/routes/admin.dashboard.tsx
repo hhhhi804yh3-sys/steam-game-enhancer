@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+
 import { LogoMark } from "@/components/Logo3D";
 import { 
   Upload, LogOut, Trash2, Star, StarOff, Link as LinkIcon, KeyRound, 
@@ -15,10 +15,7 @@ export const Route = createFileRoute("/admin/dashboard")({
   component: Dashboard,
 });
 
-type Version = {
-  id: string; version: string; title: string; description: string; changelog: string | null;
-  file_path: string; file_size: number | null; is_latest: boolean; created_at: string;
-};
+type Version = { id: string; version: string; description: string; changelog: string; file_path: string; is_latest: boolean; created_at: string; };
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -84,50 +81,59 @@ function Dashboard() {
   }
 
   async function uploadVersion(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setBusy(true); setMsg(null);
-    try {
-      const fd = new FormData(e.currentTarget);
-      const version = String(fd.get("version") || "").trim();
-      const description = String(fd.get("description") || "").trim();
-      const changelog = String(fd.get("changelog") || "").trim();
-      const file = fd.get("file") as File;
-      if (!version || !file || !file.size) throw new Error("Version and file are required");
-      const ext = file.name.split(".").pop() || "bin";
-      const path = `builds/${Date.now()}-${version.replace(/[^\w.-]/g, "_")}.${ext}`;
-      const up = await supabase.storage.from("tool-builds").upload(path, file, { upsert: false, contentType: file.type || undefined });
-      if (up.error) throw up.error;
-      const ins = await supabase.from("tool_versions").insert({
-        version, description, changelog: changelog || null,
-        file_path: path, file_size: file.size, is_latest: true,
-      });
-      if (ins.error) throw ins.error;
-      setMsg(`Uploaded v${version} successfully ✓`);
-      (e.target as HTMLFormElement).reset();
-      await refresh();
-    } catch (e: unknown) {
-      setMsg(e instanceof Error ? e.message : "Upload failed");
-    } finally {
-      setBusy(false);
+      e.preventDefault();
+      setBusy(true); setMsg(null);
+      try {
+        const fd = new FormData(e.currentTarget);
+        const version = String(fd.get("version") || "").trim();
+        const description = String(fd.get("description") || "").trim();
+        const link = String(fd.get("link") || "").trim();
+        if (!version || !link) throw new Error("Version and Link are required");
+        
+        const newV = {
+          id: crypto.randomUUID(),
+          version, description, changelog: null,
+          file_path: link, is_latest: true, created_at: new Date().toISOString()
+        };
+        
+        await fetch('/api/public/versions', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ version: newV })
+        });
+        
+        setMsg(Published v successfully!);
+        (e.target as HTMLFormElement).reset();
+        fetchVersions();
+      } catch (e: unknown) {
+        setMsg(e instanceof Error ? e.message : "Upload failed");
+      } finally {
+        setBusy(false);
+      }
     }
-  }
 
   async function setLatest(id: string) {
-    await supabase.from("tool_versions").update({ is_latest: true }).eq("id", id);
-    refresh();
-  }
+      const v = versions.find(x => x.id === id);
+      if(v) {
+        v.is_latest = true;
+        await fetch('/api/public/versions', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ version: v }) });
+        fetchVersions();
+      }
+    }
 
   async function unsetLatest(id: string) {
-    await supabase.from("tool_versions").update({ is_latest: false }).eq("id", id);
-    refresh();
-  }
+      const v = versions.find(x => x.id === id);
+      if(v) {
+        v.is_latest = false;
+        await fetch('/api/public/versions', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ version: v }) });
+        fetchVersions();
+      }
+    }
 
   async function removeVersion(v: Version) {
-    if (!confirm(`Delete v${v.version}?`)) return;
-    await supabase.storage.from("tool-builds").remove([v.file_path]);
-    await supabase.from("tool_versions").delete().eq("id", v.id);
-    refresh();
-  }
+      if (!confirm(Delete v?)) return;
+      await fetch(/api/public/versions?id=, { method: 'DELETE' });
+      fetchVersions();
+    }
 
   async function saveLinks(e: React.FormEvent) {
     e.preventDefault();
@@ -296,8 +302,8 @@ function Dashboard() {
                   <input name="description" placeholder="Short description" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-cyan-500" />
                 </div>
                 <div>
-                  <label className="text-slate-300 block mb-1 font-medium">Executable (.exe / .zip)</label>
-                  <input required type="file" name="file" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-400 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:bg-cyan-500 file:text-slate-950 file:font-bold hover:file:bg-cyan-400" />
+                  <label className="text-slate-300 block mb-1 font-medium">Download Link (e.g. Mediafire/Mega)</label>
+                    <input required type="url" name="link" placeholder="https://..." className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-cyan-500" />
                 </div>
                 <button type="submit" disabled={busy} className="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition">
                   {busy ? "Uploading Build..." : "Publish Release"}
