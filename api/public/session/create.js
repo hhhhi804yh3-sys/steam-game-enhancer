@@ -17,9 +17,9 @@ export default async function handler(req, res) {
   }
 
   const createdAt = Date.now();
-  // 15 minutes duration
-  const expiresAt = new Date(createdAt + 15 * 60 * 1000).toISOString();
-  const origin = "https://cysawtools.vercel.app";
+  // 5 minutes duration
+  const expiresAt = new Date(createdAt + 5 * 60 * 1000).toISOString();
+  const origin = "https://cyaswtools.vercel.app";
   const activationUrl = `${origin}/activate/${token}`;
 
   // Store initial session as pending

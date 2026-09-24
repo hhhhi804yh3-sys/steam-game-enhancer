@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   if (token) {
     activatedTokens.add(token);
     const existing = globalSessions.get(token) || {};
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     globalSessions.set(token, {
       ...existing,
       status: "activated",
@@ -46,6 +46,6 @@ export default async function handler(req, res) {
     status: "activated",
     token,
     activated_at: new Date().toISOString(),
-    expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
   });
 }

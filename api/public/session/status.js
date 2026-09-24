@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   const isActivated = activatedTokens.has(token);
   const session = globalSessions.get(token);
 
-  const expiresAt = session?.expiresAt || new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  const expiresAt = session?.expiresAt || new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
   if (isActivated || session?.status === "activated") {
     return res.status(200).json({

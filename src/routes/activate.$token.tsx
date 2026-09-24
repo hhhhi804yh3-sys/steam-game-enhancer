@@ -78,10 +78,10 @@ function Activate() {
               </div>
               <h1 className="text-3xl font-extrabold mt-4 text-slate-100">Session Activated!</h1>
               <div className="inline-block my-3 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold">
-                ⏱️ Free Session: 15 Minutes
+                ⏱️ Free Session: 5 Minutes
               </div>
               <p className="text-slate-300 mt-2 text-sm leading-relaxed">
-                Your 15-minute free session for <b className="text-cyan-400">Cysaw Tools</b> is now active.<br />
+                Your 5-minute free session for <b className="text-cyan-400">Cysaw Tools</b> is now active.<br />
                 Return to the application to start using it.
               </p>
 
