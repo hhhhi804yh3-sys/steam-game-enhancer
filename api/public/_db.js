@@ -3,7 +3,7 @@ const API_URL = "https://api.restful-api.dev/objects/" + DB_ID;
 
 export async function getDb() {
   try {
-    const res = await fetch(API_URL);
+    const res = await fetch(API_URL, { cache: 'no-store' });
     if (!res.ok) return getDefaultDb();
     const json = await res.json();
     return json.data || getDefaultDb();
@@ -14,13 +14,15 @@ export async function getDb() {
 
 export async function saveDb(data) {
   try {
-    await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: "cysaw_master_db", data })
+      body: JSON.stringify({ name: "cysaw_master_db", data }),
+      cache: 'no-store'
     });
+    if (!res.ok) console.error('Save failed', await res.text());
   } catch (e) {
-    // ignore
+    console.error(e);
   }
 }
 
