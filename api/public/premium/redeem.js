@@ -1,13 +1,10 @@
+import { getDb, saveDb } from '../db.js';
+
 const MASTER_KEYS = new Set([
   "CYSAW-PREMIUM-2026-VIP1",
   "CYSAW-PREMIUM-2026-VIP2",
   "NJC7EA4FDTAM5TPUH4NRRSZ2RHWEVR3J"
 ]);
-
-// Shared codes store reference
-const g = globalThis;
-if (!g.__CSW_CODES__) g.__CSW_CODES__ = new Map();
-if (!g.__CSW_USED_CODES__) g.__CSW_USED_CODES__ = new Set();
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -48,8 +45,12 @@ export default async function handler(req, res) {
     });
   }
 
+  const db = await getDb();
+  if (!db.used_codes) db.used_codes = [];
+  if (!db.codes) db.codes = [];
+
   // 2. Check if code was already used
-  if (g.__CSW_USED_CODES__.has(code)) {
+  if (db.used_codes.includes(code)) {
     return res.status(400).json({
       ok: false,
       error: "This code has already been redeemed."
@@ -61,17 +62,20 @@ export default async function handler(req, res) {
 
   if (is32CharKey) {
     // Look up duration from codes store if available
-    const storedCode = g.__CSW_CODES__.get(code);
+    const storedCodeIndex = db.codes.findIndex(c => c.code === code);
+    const storedCode = storedCodeIndex >= 0 ? db.codes[storedCodeIndex] : null;
     const durationDays = storedCode?.duration_days || 30;
     const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
 
     // Mark as used
-    g.__CSW_USED_CODES__.add(code);
+    db.used_codes.push(code);
     if (storedCode) {
       storedCode.used_at = new Date().toISOString();
       storedCode.used_by_token = token || "user";
-      g.__CSW_CODES__.set(code, storedCode);
+      db.codes[storedCodeIndex] = storedCode;
     }
+
+    await saveDb(db);
 
     return res.status(200).json({
       ok: true,

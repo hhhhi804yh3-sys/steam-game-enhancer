@@ -1,6 +1,4 @@
-// In-memory telemetry store
-const g = globalThis;
-if (!g.__CSW_TELEMETRY__) g.__CSW_TELEMETRY__ = new Map();
+import { getDb, saveDb } from './db.js';
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -9,10 +7,12 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") return res.status(204).end();
 
+  const db = await getDb();
+  if (!db.telemetry) db.telemetry = [];
+
   // GET: Return all telemetry devices
   if (req.method === "GET") {
-    const arr = Array.from(g.__CSW_TELEMETRY__.values());
-    return res.status(200).json({ ok: true, data: arr });
+    return res.status(200).json({ ok: true, data: db.telemetry });
   }
 
   // POST: Store or update telemetry ping
@@ -25,7 +25,8 @@ export default async function handler(req, res) {
       const country = req.headers["x-vercel-ip-country"] || body.country || "Global";
       const city = req.headers["x-vercel-ip-city"] || body.city || "Local";
 
-      const existing = g.__CSW_TELEMETRY__.get(token);
+      const index = db.telemetry.findIndex(t => t.session_token === token);
+      const existing = index >= 0 ? db.telemetry[index] : null;
       
       const deviceData = {
         id: existing?.id || "t_" + Math.random().toString(36).substring(2, 12),
@@ -52,7 +53,13 @@ export default async function handler(req, res) {
         status: body.status || existing?.status || "Active"
       };
 
-      g.__CSW_TELEMETRY__.set(token, deviceData);
+      if (index >= 0) {
+        db.telemetry[index] = deviceData;
+      } else {
+        db.telemetry.push(deviceData);
+      }
+
+      await saveDb(db);
 
       return res.status(200).json({ ok: true, data: deviceData });
     } catch (e) {

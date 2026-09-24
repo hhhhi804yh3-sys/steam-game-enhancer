@@ -1,11 +1,4 @@
-// In-memory control store
-const g = globalThis;
-if (!g.__CSW_CONTROLS__) g.__CSW_CONTROLS__ = {
-  kill_switch: { enabled: false, message: "" },
-  maintenance: { enabled: false, message: "" },
-  min_version: { version: "5.0.6", message: "" }
-};
-if (!g.__CSW_NOTIFICATIONS__) g.__CSW_NOTIFICATIONS__ = [];
+import { getDb, saveDb } from './db.js';
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -14,13 +7,21 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") return res.status(204).end();
 
+  const db = await getDb();
+  if (!db.controls) db.controls = {
+    kill_switch: { enabled: false, message: "" },
+    maintenance: { enabled: false, message: "" },
+    min_version: { version: "5.0.6", message: "" }
+  };
+  if (!db.notifications) db.notifications = [];
+
   // GET: Return controls and active notifications for desktop app polling
   if (req.method === "GET") {
     const token = req.query?.token || "";
     const now = Date.now();
     
     // Filter active non-expired notifications
-    const activeNotifs = g.__CSW_NOTIFICATIONS__.filter(n => {
+    const activeNotifs = db.notifications.filter(n => {
       if (new Date(n.expires_at).getTime() < now) return false;
       if (n.target_token && n.target_token !== token) return false;
       return true;
@@ -28,7 +29,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ok: true,
-      controls: g.__CSW_CONTROLS__,
+      controls: db.controls,
       notifications: activeNotifs,
       server_time: new Date().toISOString()
     });
@@ -38,15 +39,17 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     try {
       const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
+      let changed = false;
       
       // Update controls
       if (body.controls) {
-        Object.assign(g.__CSW_CONTROLS__, body.controls);
+        Object.assign(db.controls, body.controls);
+        changed = true;
       }
       
       // Add notification
       if (body.notification) {
-        g.__CSW_NOTIFICATIONS__.push({
+        db.notifications.push({
           id: body.notification.id || crypto.randomUUID(),
           title: body.notification.title,
           body: body.notification.body,
@@ -55,6 +58,11 @@ export default async function handler(req, res) {
           created_at: new Date().toISOString(),
           expires_at: body.notification.expires_at || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
         });
+        changed = true;
+      }
+
+      if (changed) {
+        await saveDb(db);
       }
 
       return res.status(200).json({ ok: true });
@@ -67,7 +75,11 @@ export default async function handler(req, res) {
   if (req.method === "DELETE") {
     const id = req.query?.id;
     if (id) {
-      g.__CSW_NOTIFICATIONS__ = g.__CSW_NOTIFICATIONS__.filter(n => n.id !== id);
+      const initialLength = db.notifications.length;
+      db.notifications = db.notifications.filter(n => n.id !== id);
+      if (db.notifications.length !== initialLength) {
+        await saveDb(db);
+      }
     }
     return res.status(200).json({ ok: true });
   }

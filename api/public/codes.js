@@ -1,6 +1,4 @@
-// In-memory store for codes (persists within Vercel's cold-start window)
-const g = globalThis;
-if (!g.__CSW_CODES__) g.__CSW_CODES__ = new Map();
+import { getDb, saveDb } from './db.js';
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -9,10 +7,12 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") return res.status(204).end();
 
+  const db = await getDb();
+  if (!db.codes) db.codes = [];
+
   // GET: Return all codes
   if (req.method === "GET") {
-    const arr = Array.from(g.__CSW_CODES__.values());
-    return res.status(200).json({ ok: true, data: arr });
+    return res.status(200).json({ ok: true, data: db.codes });
   }
 
   // POST: Add codes (batch)
@@ -22,7 +22,8 @@ export default async function handler(req, res) {
       const items = Array.isArray(body) ? body : [body];
       for (const item of items) {
         if (item.code) {
-          g.__CSW_CODES__.set(item.code, {
+          const index = db.codes.findIndex(c => c.code === item.code);
+          const newCode = {
             id: item.id || item.code,
             code: item.code,
             duration_days: item.duration_days || 30,
@@ -30,9 +31,15 @@ export default async function handler(req, res) {
             created_at: item.created_at || new Date().toISOString(),
             used_at: item.used_at || null,
             used_by_token: item.used_by_token || null
-          });
+          };
+          if (index >= 0) {
+            db.codes[index] = newCode;
+          } else {
+            db.codes.push(newCode);
+          }
         }
       }
+      await saveDb(db);
       return res.status(200).json({ ok: true, count: items.length });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
@@ -46,11 +53,11 @@ export default async function handler(req, res) {
       const code = String(body.code || "").trim().toUpperCase();
       if (!code) return res.status(400).json({ ok: false, error: "Missing code" });
       
-      const existing = g.__CSW_CODES__.get(code);
+      const existing = db.codes.find(c => c.code === code);
       if (existing) {
         existing.used_at = new Date().toISOString();
         existing.used_by_token = body.used_by_token || "user";
-        g.__CSW_CODES__.set(code, existing);
+        await saveDb(db);
       }
       return res.status(200).json({ ok: true });
     } catch (e) {
@@ -62,14 +69,10 @@ export default async function handler(req, res) {
   if (req.method === "DELETE") {
     const id = req.query?.id;
     if (id) {
-      // Try to delete by id or by code
-      let deleted = false;
-      for (const [key, val] of g.__CSW_CODES__.entries()) {
-        if (val.id === id || val.code === id) {
-          g.__CSW_CODES__.delete(key);
-          deleted = true;
-          break;
-        }
+      const initialLength = db.codes.length;
+      db.codes = db.codes.filter(c => c.id !== id && c.code !== id);
+      if (db.codes.length !== initialLength) {
+        await saveDb(db);
       }
     }
     return res.status(200).json({ ok: true });
