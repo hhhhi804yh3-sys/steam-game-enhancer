@@ -101,7 +101,7 @@ function Dashboard() {
           body: JSON.stringify({ version: newV })
         });
         
-        setMsg(Published v successfully!);
+        setMsg("Published successfully!");
         (e.target as HTMLFormElement).reset();
         fetchVersions();
       } catch (e: unknown) {
