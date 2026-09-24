@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { memorySessions } from "@/lib/memory-store.server";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -13,6 +12,9 @@ function randomToken() {
   crypto.getRandomValues(a);
   return Array.from(a, (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 40);
 }
+
+// In-memory fallback map for serverless execution
+const fallbackSessions = new Map<string, { token: string; status: string; expires_at: string; activated_at: string | null }>();
 
 export const Route = createFileRoute("/api/public/session/create")({
   server: {
@@ -27,19 +29,16 @@ export const Route = createFileRoute("/api/public/session/create")({
             device: typeof body?.device === "string" ? body.device.slice(0, 200) : "win-x64",
           };
           const token = randomToken();
-          const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour session
+          const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
-          // Store in memory
-          memorySessions.set(token, {
+          fallbackSessions.set(token, {
             token,
-            clientInfo,
             status: "pending",
-            createdAt: Date.now(),
-            expiresAt,
-            activatedAt: null,
+            expires_at: expiresAt,
+            activated_at: null,
           });
 
-          // Try saving to Supabase if available
+          // Try Supabase insert safely without throwing
           try {
             await supabaseAdmin.from("activation_sessions").insert({
               token,
@@ -47,8 +46,8 @@ export const Route = createFileRoute("/api/public/session/create")({
               status: "pending",
               expires_at: expiresAt,
             });
-          } catch (e) {
-            console.warn("[SessionCreate] Supabase sync fallback:", e);
+          } catch (dbErr) {
+            console.warn("[Session] DB fallback:", dbErr);
           }
 
           const origin = new URL(request.url).origin || "https://cysawtools.vercel.app";
@@ -60,11 +59,9 @@ export const Route = createFileRoute("/api/public/session/create")({
             activation_url: activationUrl,
             expires_at: expiresAt,
           }, { headers: CORS });
-        } catch (e: unknown) {
-          return Response.json({
-            ok: false,
-            error: e instanceof Error ? e.message : "Server error",
-          }, { status: 500, headers: CORS });
+        } catch (e: any) {
+          const errMsg = e?.message || (typeof e === "object" ? JSON.stringify(e) : String(e));
+          return Response.json({ ok: false, error: errMsg }, { status: 500, headers: CORS });
         }
       },
     },
