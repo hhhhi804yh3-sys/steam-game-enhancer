@@ -22,7 +22,8 @@ export const Route = createFileRoute("/api/public/session/create")({
       POST: async ({ request }) => {
         try {
           const token = generateToken();
-          const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour session
+          // Exactly 15 minutes free session
+          const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
           const origin = "https://cysawtools.vercel.app";
           const activationUrl = `${origin}/activate/${token}`;
 
@@ -38,7 +39,7 @@ export const Route = createFileRoute("/api/public/session/create")({
             ok: true,
             token,
             activation_url: `https://cysawtools.vercel.app/activate/${token}`,
-            expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+            expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
           }, { headers: CORS });
         }
       },

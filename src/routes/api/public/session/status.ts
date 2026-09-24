@@ -24,7 +24,8 @@ export const Route = createFileRoute("/api/public/session/status")({
           }
 
           const isActivated = activatedTokens.has(token);
-          const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+          // Exactly 15 minutes duration
+          const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
           return Response.json({
             ok: true,
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/api/public/session/status")({
             ok: true,
             status: "pending",
             activated_at: null,
-            expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+            expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
           }, { headers: CORS });
         }
       },
