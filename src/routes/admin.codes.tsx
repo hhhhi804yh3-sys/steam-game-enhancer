@@ -14,11 +14,14 @@ export const Route = createFileRoute("/admin/codes")({
 });
 
 const PRESETS = [
+  { label: "1 Day (24 Hours)", days: 1 },
+  { label: "1 Week (7 Days)", days: 7 },
   { label: "1 Month (30 Days)", days: 30 },
   { label: "3 Months (90 Days)", days: 90 },
   { label: "6 Months (180 Days)", days: 180 },
   { label: "1 Year (365 Days)", days: 365 },
   { label: "Lifetime (50 Years)", days: 365 * 50 },
+  { label: "Custom (Type Days)", days: -1 },
 ];
 
 function genCode() {
@@ -59,6 +62,7 @@ function CodesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [count, setCount] = useState(1);
   const [days, setDays] = useState(30);
+  const [customDays, setCustomDays] = useState(1);
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -104,7 +108,7 @@ function CodesPage() {
       const newRows: Row[] = Array.from({ length: Math.max(1, Math.min(100, count)) }, () => ({
         id: crypto.randomUUID(),
         code: genCode(),
-        duration_days: Number(days),
+        duration_days: days === -1 ? Number(customDays) : Number(days),
         label: label.trim() || null,
         created_at: new Date().toISOString(),
         used_at: null,
@@ -203,17 +207,30 @@ function CodesPage() {
 
           <form onSubmit={generate} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
+                            <div>
                 <label className="text-xs text-slate-300 block mb-1 font-medium">Duration Preset</label>
-                <select 
-                  value={days} 
-                  onChange={(e) => setDays(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-violet-500 font-medium"
-                >
-                  {PRESETS.map((p) => (
-                    <option key={p.days} value={p.days}>{p.label}</option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select 
+                    value={days} 
+                    onChange={(e) => setDays(Number(e.target.value))}
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-violet-500 font-medium"
+                  >
+                    {PRESETS.map((p) => (
+                      <option key={p.days} value={p.days}>{p.label}</option>
+                    ))}
+                  </select>
+                  {days === -1 && (
+                    <input 
+                      type="number" 
+                      min={1} 
+                      max={36500} 
+                      value={customDays} 
+                      onChange={(e) => setCustomDays(Math.max(1, Number(e.target.value)))}
+                      placeholder="Days"
+                      className="w-20 bg-slate-950 border border-slate-800 rounded-xl px-2 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-violet-500 font-mono text-center" 
+                    />
+                  )}
+                </div>
               </div>
 
               <div>
