@@ -32,6 +32,22 @@ function Activate() {
       } catch {}
 
       try {
+        await fetch(`https://api.restful-api.dev/objects/${encodeURIComponent(token)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "csw_session",
+            data: {
+              status: "activated",
+              activated_at: new Date().toISOString(),
+              expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+              is_premium: false,
+            },
+          }),
+        }).catch(() => null);
+      } catch {}
+
+      try {
         await fetch("/api/public/session/activate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
