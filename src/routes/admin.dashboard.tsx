@@ -32,30 +32,31 @@ function Dashboard() {
 
   const refresh = useCallback(async () => {
     try {
-      const [vs, dev, cod, not] = await Promise.all([
-        supabase.from("tool_versions").select("*").order("created_at", { ascending: false }),
-        supabase.from("device_telemetry").select("id", { count: "exact", head: true }),
-        supabase.from("premium_codes").select("id", { count: "exact", head: true }),
-        supabase.from("app_notifications").select("id", { count: "exact", head: true }),
+      const [codesRes, telemRes] = await Promise.all([
+        fetch("/api/public/codes").then(r => r.json()).catch(() => null),
+        fetch("/api/public/telemetry").then(r => r.json()).catch(() => null)
       ]);
 
       const storedCodes = localStorage.getItem("cyasw_cached_codes");
-      const storedNotifs = localStorage.getItem("cyasw_cached_notifs");
       const storedDevs = localStorage.getItem("cyasw_cached_telemetry");
+      const storedNotifs = localStorage.getItem("cyasw_cached_notifs");
+
+      const devCount = telemRes?.data?.length ?? (storedDevs ? JSON.parse(storedDevs).length : 0);
+      const codeCount = codesRes?.data?.length ?? (storedCodes ? JSON.parse(storedCodes).length : 0);
+      const notifCount = storedNotifs ? JSON.parse(storedNotifs).length : 0;
 
       setCounts({
-        devices: dev?.count ?? (storedDevs ? JSON.parse(storedDevs).length : 0),
-        codes: cod?.count ?? (storedCodes ? JSON.parse(storedCodes).length : 0),
-        notifications: not?.count ?? (storedNotifs ? JSON.parse(storedNotifs).length : 0),
+        devices: devCount,
+        codes: codeCount,
+        notifications: notifCount
       });
     } catch {
       const storedCodes = localStorage.getItem("cyasw_cached_codes");
-      const storedNotifs = localStorage.getItem("cyasw_cached_notifs");
       const storedDevs = localStorage.getItem("cyasw_cached_telemetry");
       setCounts({
         devices: storedDevs ? JSON.parse(storedDevs).length : 0,
         codes: storedCodes ? JSON.parse(storedCodes).length : 0,
-        notifications: storedNotifs ? JSON.parse(storedNotifs).length : 0,
+        notifications: 0
       });
     }
 

@@ -65,24 +65,21 @@ function CodesPage() {
   const [q, setQ] = useState("");
 
   const refresh = useCallback(async () => {
-    let loaded: Row[] = [];
+    let localRows = getStoredCodes();
     try {
-      const { data, error } = await supabase
-        .from("premium_codes")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(300);
-
-      if (!error && data && data.length > 0) {
-        loaded = data as Row[];
-        saveStoredCodes(loaded);
-      } else {
-        loaded = getStoredCodes();
+      const res = await fetch("/api/public/codes").then(r => r.json()).catch(() => null);
+      if (res && res.ok && Array.isArray(res.data) && res.data.length > 0) {
+        // Merge without duplicates
+        const map = new Map<string, Row>();
+        localRows.forEach(r => map.set(r.code, r));
+        res.data.forEach((r: Row) => map.set(r.code, { ...map.get(r.code), ...r }));
+        const merged = Array.from(map.values()).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        saveStoredCodes(merged);
+        setRows(merged);
+        return;
       }
-    } catch {
-      loaded = getStoredCodes();
-    }
-    setRows(loaded);
+    } catch {}
+    setRows(localRows);
   }, []);
 
   useEffect(() => {
@@ -114,23 +111,18 @@ function CodesPage() {
         used_by_token: null,
       }));
 
-      // Try saving to Supabase
-      try {
-        await supabase.from("premium_codes").insert(
-          newRows.map((r) => ({
-            code: r.code,
-            duration_days: r.duration_days,
-            label: r.label,
-          }))
-        );
-      } catch (err) {
-        console.warn("[Codes] Saved to local master storage:", err);
-      }
+      // 1. Save to online store API
+      fetch("/api/public/codes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newRows),
+      }).catch(() => null);
 
-      // Update local storage and state immediately
-      const updated = [...newRows, ...rows];
-      setRows(updated);
+      // 2. Update local state and localStorage
+      const current = getStoredCodes();
+      const updated = [...newRows, ...current];
       saveStoredCodes(updated);
+      setRows(updated);
 
       setLabel("");
       setCount(1);
@@ -143,13 +135,12 @@ function CodesPage() {
 
   async function removeCode(id: string) {
     if (!confirm("Are you sure you want to delete this activation code?")) return;
-    try {
-      await supabase.from("premium_codes").delete().eq("id", id);
-    } catch {}
+    fetch(`/api/public/codes?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => null);
 
-    const updated = rows.filter((r) => r.id !== id);
-    setRows(updated);
+    const current = getStoredCodes();
+    const updated = current.filter((r) => r.id !== id && r.code !== id);
     saveStoredCodes(updated);
+    setRows(updated);
   }
 
   async function copy(c: string) {

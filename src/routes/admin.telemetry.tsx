@@ -51,24 +51,16 @@ function TelemetryPage() {
   const [msgSending, setMsgSending] = useState(false);
 
   const refresh = useCallback(async () => {
-    let loaded: Row[] = [];
+    let localRows = getStoredTelemetry();
     try {
-      const { data, error } = await supabase
-        .from("device_telemetry")
-        .select("*")
-        .order("last_seen", { ascending: false })
-        .limit(300);
-
-      if (!error && data && data.length > 0) {
-        loaded = data as Row[];
-        saveStoredTelemetry(loaded);
-      } else {
-        loaded = getStoredTelemetry();
+      const res = await fetch("/api/public/telemetry").then(r => r.json()).catch(() => null);
+      if (res && res.ok && Array.isArray(res.data) && res.data.length > 0) {
+        saveStoredTelemetry(res.data);
+        setRows(res.data);
+        return;
       }
-    } catch {
-      loaded = getStoredTelemetry();
-    }
-    setRows(loaded);
+    } catch {}
+    setRows(localRows);
   }, []);
 
   useEffect(() => {
