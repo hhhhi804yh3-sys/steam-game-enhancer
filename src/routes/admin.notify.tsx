@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+
 import { LogoMark } from "@/components/Logo3D";
 import { isMasterAdminLoggedIn, logoutAdmin } from "@/lib/admin-auth";
 import { 
@@ -60,29 +60,26 @@ function NotifyPage() {
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    let loadedNotifs: Notif[] = [];
+    let loadedNotifs: Notif[] = getStoredNotifs();
     try {
-      const [n, c] = await Promise.all([
-        supabase.from("app_notifications").select("*").order("created_at", { ascending: false }).limit(50),
-        supabase.from("app_controls").select("key,value"),
-      ]);
-
-      if (n.data && n.data.length > 0) {
-        loadedNotifs = n.data as Notif[];
-        saveStoredNotifs(loadedNotifs);
-      } else {
-        loadedNotifs = getStoredNotifs();
+      const ctrlRes = await fetch("/api/public/control").then(r => r.json()).catch(() => null);
+      if (ctrlRes?.ok) {
+        if (ctrlRes.notifications && ctrlRes.notifications.length > 0) {
+          const merged = [...ctrlRes.notifications, ...loadedNotifs];
+          const unique = Array.from(new Map(merged.map(n => [n.id, n])).values());
+          loadedNotifs = unique.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          saveStoredNotifs(loadedNotifs);
+        }
+        if (ctrlRes.controls) {
+          const c: Record<string, { value: Record<string, unknown> }> = {};
+          for (const [key, val] of Object.entries(ctrlRes.controls)) {
+            c[key] = { value: val as Record<string, unknown> };
+          }
+          setControls(c);
+          saveStoredControls(c);
+        }
       }
-
-      if (c.data && c.data.length > 0) {
-        const m: Record<string, { value: Record<string, unknown> }> = {};
-        for (const r of c.data) m[r.key] = { value: r.value as Record<string, unknown> };
-        setControls(m);
-        saveStoredControls(m);
-      }
-    } catch {
-      loadedNotifs = getStoredNotifs();
-    }
+    } catch {}
     setNotifs(loadedNotifs);
   }, []);
 
@@ -123,17 +120,12 @@ function NotifyPage() {
         expires_at: expiresAt,
       };
 
-      try {
-        await supabase.from("app_notifications").insert({
-          title,
-          body,
-          level,
-          target_token: target || null,
-          expires_at: expiresAt,
-        });
-      } catch (err) {
-        console.warn("[Broadcast] Saved to local storage fallback:", err);
-      }
+      // Push to server API
+      fetch("/api/public/control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notification: newNotif }),
+      }).catch(() => null);
 
       const updated = [newNotif, ...notifs];
       setNotifs(updated);
@@ -153,20 +145,20 @@ function NotifyPage() {
     setControls(updated);
     saveStoredControls(updated);
 
-    try {
-      await supabase.from("app_controls").upsert({ 
-        key, 
-        value: value as never, 
-        updated_at: new Date().toISOString() 
-      });
-    } catch {}
+    // Push to server API
+    const flatControls: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(updated)) {
+      flatControls[k] = v.value;
+    }
+    fetch("/api/public/control", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ controls: flatControls }),
+    }).catch(() => null);
   }
 
   async function deleteNotif(id: string) {
-    try {
-      await supabase.from("app_notifications").delete().eq("id", id);
-    } catch {}
-
+    fetch(`/api/public/control?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => null);
     const updated = notifs.filter((n) => n.id !== id);
     setNotifs(updated);
     saveStoredNotifs(updated);
