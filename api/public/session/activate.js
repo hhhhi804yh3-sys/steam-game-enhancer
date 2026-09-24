@@ -1,6 +1,3 @@
-const globalSessions = (globalThis.__CYSAW_SESSIONS__ = globalThis.__CYSAW_SESSIONS__ || new Map());
-const activatedTokens = (globalThis.__CYSAW_ACTIVATED__ = globalThis.__CYSAW_ACTIVATED__ || new Set());
-
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -10,12 +7,12 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
-  let token = "";
-  if (req.body) {
+  let token = req.query?.token || "";
+  if (!token && req.body) {
     if (typeof req.body === "string") {
       try {
-        const parsed = JSON.parse(req.body);
-        token = parsed.token || "";
+        const p = JSON.parse(req.body);
+        token = p.token || "";
       } catch {
         token = req.body;
       }
@@ -23,29 +20,17 @@ export default async function handler(req, res) {
       token = req.body.token || "";
     }
   }
-  if (!token && req.query?.token) {
-    token = req.query.token;
-  }
-
   token = String(token).trim();
 
-  if (token) {
-    activatedTokens.add(token);
-    const existing = globalSessions.get(token) || {};
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-    globalSessions.set(token, {
-      ...existing,
-      status: "activated",
-      activatedAt: new Date().toISOString(),
-      expiresAt,
+  try {
+    const cfRes = await fetch("https://cysaw-auth.hhhhi804yh7.workers.dev/api/public/session/activate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token })
     });
+    const data = await cfRes.json();
+    return res.status(200).json(data);
+  } catch (err) {
+    return res.status(200).json({ ok: true, status: "activated", token, expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString() });
   }
-
-  return res.status(200).json({
-    ok: true,
-    status: "activated",
-    token,
-    activated_at: new Date().toISOString(),
-    expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-  });
 }
