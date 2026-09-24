@@ -115,12 +115,10 @@ function CatalogPage() {
                       <div className="mt-3 flex items-center justify-between">
                         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Tag className="h-3 w-3" />
-                          {g.is_free || !formatPrice(g.price_cents) ? "Free" : (
-                            <span className="line-through opacity-70">{formatPrice(g.price_cents)}</span>
-                          )}
+                          {<span className="line-through opacity-70 text-red-400">{formatPrice(g.initial_price_cents)}</span>}
                         </span>
                         <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-primary text-primary-foreground">
-                          FREE in tool
+                          Free with Cyasw
                         </span>
                       </div>
                     </div>

@@ -1,0 +1,28 @@
+{
+    "notifications":  [
+
+                      ],
+    "controls":  {
+                     "maintenance":  {
+                                         "message":  "",
+                                         "enabled":  false
+                                     },
+                     "min_version":  {
+                                         "version":  "5.0.6",
+                                         "message":  ""
+                                     },
+                     "kill_switch":  {
+                                         "message":  "",
+                                         "enabled":  false
+                                     }
+                 },
+    "used_codes":  [
+
+                   ],
+    "telemetry":  [
+
+                  ],
+    "codes":  [
+
+              ]
+}
