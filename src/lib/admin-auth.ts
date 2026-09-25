@@ -1,4 +1,4 @@
-// Master Admin Authentication System for CyaswTools
+﻿// Master Admin Authentication System for CyaswTools
 
 const ADMIN_EMAIL = "admin@cyaswtools.com";
 // SHA-256 Hash of: "Cyasw#Admin@2026!Pro"
@@ -52,4 +52,19 @@ export function logoutAdmin() {
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SESSION_EXPIRY_KEY);
   }
+}
+
+export function loginSwitchAdmin(token: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("switch_admin_auth", token);
+}
+
+export function logoutSwitchAdmin() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("switch_admin_auth");
+}
+
+export function isSwitchAdminLoggedIn() {
+  if (typeof window === "undefined") return false;
+  return !!localStorage.getItem("switch_admin_auth");
 }
