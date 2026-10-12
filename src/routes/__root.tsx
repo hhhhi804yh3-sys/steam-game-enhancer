@@ -13,17 +13,17 @@ import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#07090e] px-4 font-sans text-slate-100">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 font-sans text-gray-900">
       <div className="max-w-md text-center">
-        <h1 className="text-8xl font-black text-cyan-400 font-mono tracking-tighter">404</h1>
-        <h2 className="mt-4 text-2xl font-bold text-slate-100">Page not found</h2>
-        <p className="mt-2 text-sm text-slate-400">
+        <h1 className="text-8xl font-black text-[#E60012] font-mono tracking-tighter">404</h1>
+        <h2 className="mt-4 text-2xl font-bold text-gray-900">Page not found</h2>
+        <p className="mt-2 text-sm text-gray-500">
           The requested page does not exist or has been relocated.
         </p>
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-5 py-2.5 text-xs font-bold text-slate-950 transition hover:bg-cyan-400"
+            className="inline-flex items-center justify-center rounded-xl bg-[#E60012] px-5 py-2.5 text-xs font-bold text-white transition hover:bg-[#CC0010]"
           >
             Return to Home
           </Link>
@@ -38,12 +38,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#07090e] px-4 font-sans text-slate-100">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 font-sans text-gray-900">
       <div className="max-w-md text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-100">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
           Application Error
         </h1>
-        <p className="mt-2 text-xs text-slate-400">
+        <p className="mt-2 text-xs text-gray-500">
           An unexpected error occurred. You can retry or return to the homepage.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -52,13 +52,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-400"
+            className="inline-flex items-center justify-center rounded-xl bg-[#E60012] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#CC0010]"
           >
             Try again
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-800 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800"
+            className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-100"
           >
             Go home
           </a>
@@ -73,43 +73,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CyaswTools — Ultimate Steam Game Fix & Library Utility" },
+      { title: "SteamSwitch — The Nintendo-Inspired PC Gaming Hub" },
       { 
         name: "description", 
-        content: "CyaswTools is the ultimate lightweight utility for Steam game lovers. Easily add games to your Steam library, apply fixes, and launch instantly with one click." 
+        content: "SteamSwitch is the ultimate console-style gaming hub for PC. Enjoy free 5-minute passes, instant Steam bypass tools, and sleek Joy-Con aesthetics." 
       },
       { 
         name: "keywords", 
-        content: "cyaswtools, cysaw tools, steamtool, steam library fix, steam bypass, add games to steam, steam utility, pc gaming helper" 
+        content: "steamswitch, nintendo switch pc, steam bypass, steam launcher, free game session, gaming console ui" 
       },
-      { name: "author", content: "CyaswTools Dev Team" },
-      { name: "theme-color", content: "#07090e" },
+      { name: "author", content: "SteamSwitch Team" },
+      { name: "theme-color", content: "#E60012" },
       { name: "robots", content: "index, follow" },
       
-      // OpenGraph (Facebook / Discord / Telegram Previews)
-      { property: "og:site_name", content: "CyaswTools" },
+      // OpenGraph
+      { property: "og:site_name", content: "SteamSwitch" },
       { property: "og:type", content: "website" },
-      { property: "og:title", content: "CyaswTools — Add Games to Steam Library Easily" },
+      { property: "og:title", content: "SteamSwitch — Console Experience for Steam on PC" },
       { 
         property: "og:description", 
-        content: "The fast, modern, and lightweight utility for Steam game lovers. Add games to your Steam library in seconds." 
+        content: "Bring the Nintendo Switch console experience to your Steam PC library." 
       },
-      { property: "og:image", content: "/cysaw-fox.png" },
-      
-      // Twitter Cards
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "CyaswTools — Steam Game Utility" },
-      { 
-        name: "twitter:description", 
-        content: "The fast, modern, and lightweight utility for Steam game lovers. Add games to your Steam library in seconds." 
-      },
-      { name: "twitter:image", content: "/cysaw-fox.png" },
     ],
     links: [
-      // Favicons (Tab Icon / اللوقو في التبويب العلوي)
-      { rel: "icon", type: "image/png", href: "/cysaw-fox.png" },
-      { rel: "shortcut icon", type: "image/png", href: "/cysaw-fox.png" },
-      { rel: "apple-touch-icon", href: "/cysaw-fox.png" },
       {
         rel: "stylesheet",
         href: appCss,
@@ -123,11 +109,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <head>
         <HeadContent />
       </head>
-      <body className="min-h-screen bg-[#07090e] text-slate-100 antialiased selection:bg-cyan-500 selection:text-slate-950">
+      <body className="min-h-screen bg-white text-gray-900 antialiased selection:bg-[#E60012] selection:text-white">
         {children}
         <Scripts />
       </body>
