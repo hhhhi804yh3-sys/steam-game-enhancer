@@ -9,43 +9,16 @@ export const Route = createFileRoute("/activate/$token")({
 
 function ActivatePage() {
   const { token } = Route.useParams();
-  const [step, setStep] = useState<"idle" | "verifying" | "activated">("idle");
-  const [progressText, setProgressText] = useState("Initializing ticket verification...");
-  const [progressPct, setProgressPct] = useState(0);
+  const [step, setStep] = useState<"idle" | "verifying" | "activated">("verifying");
+  const [progressText, setProgressText] = useState("Authenticating session ticket...");
+  const [progressPct, setProgressPct] = useState(20);
 
   async function triggerActivation() {
     setStep("verifying");
-    setProgressPct(25);
+    setProgressPct(30);
     setProgressText("Authenticating session ticket...");
 
-    await new Promise((r) => setTimeout(r, 600));
-    setProgressPct(60);
-    setProgressText("Contacting local SteamSwitch client (127.0.0.1:49152)...");
-
-    // 1. Send to local loopback server for zero-latency instant unlock
-    try {
-      await fetch(`http://127.0.0.1:49152/activate?token=${encodeURIComponent(token)}`, {
-        method: "GET",
-        mode: "cors",
-      }).catch(() => null);
-    } catch {}
-
-    // 2. Fallback deep link
-    try {
-      const iframe = document.createElement("iframe");
-      iframe.style.display = "none";
-      iframe.src = `steamswitch://activate?token=${encodeURIComponent(token)}`;
-      document.body.appendChild(iframe);
-      setTimeout(() => {
-        try { document.body.removeChild(iframe); } catch {}
-      }, 1000);
-    } catch {}
-
-    await new Promise((r) => setTimeout(r, 700));
-    setProgressPct(85);
-    setProgressText("Synchronizing 5-minute lease with cloud server...");
-
-    // 3. Mark in REST store & Vercel API
+    // 1. Immediately update REST store & Vercel backend FIRST so desktop poller succeeds instantly
     try {
       await fetch(`https://api.restful-api.dev/objects/${encodeURIComponent(token)}`, {
         method: "PUT",
@@ -70,13 +43,51 @@ function ActivatePage() {
       }).catch(() => null);
     } catch {}
 
-    await new Promise((r) => setTimeout(r, 600));
+    setProgressPct(65);
+    setProgressText("Contacting local SteamSwitch client...");
+
+    // 2. Send to local loopback server
+    try {
+      await fetch(`http://127.0.0.1:49152/activate?token=${encodeURIComponent(token)}`, {
+        method: "GET",
+        mode: "cors",
+      }).catch(() => null);
+    } catch {}
+
+    // 3. Trigger custom protocol handlers
+    try {
+      const iframe1 = document.createElement("iframe");
+      iframe1.style.display = "none";
+      iframe1.src = `steamswitch://activate?token=${encodeURIComponent(token)}`;
+      document.body.appendChild(iframe1);
+
+      const iframe2 = document.createElement("iframe");
+      iframe2.style.display = "none";
+      iframe2.src = `cyasw://activate?token=${encodeURIComponent(token)}`;
+      document.body.appendChild(iframe2);
+
+      setTimeout(() => {
+        try { document.body.removeChild(iframe1); } catch {}
+        try { document.body.removeChild(iframe2); } catch {}
+      }, 1000);
+    } catch {}
+
+    await new Promise((r) => setTimeout(r, 400));
     setProgressPct(100);
+    setProgressText("Activation confirmed! 5-minute lease granted.");
     setStep("activated");
   }
 
+  // Auto-activate on page mount for seamless instant experience
+  useEffect(() => {
+    triggerActivation();
+  }, [token]);
+
   function launchApp() {
     window.location.href = `steamswitch://activate?token=${encodeURIComponent(token)}`;
+    setTimeout(() => {
+      try { window.location.href = `cyasw://activate?token=${encodeURIComponent(token)}`; } catch {}
+    }, 300);
   }
 
   return (

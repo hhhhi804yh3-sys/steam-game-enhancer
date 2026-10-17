@@ -31,20 +31,38 @@ export default async function handler(req, res) {
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
   try {
-    const putRes = await fetch(`${STORE_URL}/${encodeURIComponent(token)}`, {
+    let putRes = await fetch(`${STORE_URL}/${encodeURIComponent(token)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: "csw_session",
         data: {
           status: "activated",
+          token: token,
           activated_at: new Date().toISOString(),
           expires_at: expiresAt,
           is_premium: false
         }
       })
     });
-    const putData = await putRes.json();
+
+    if (putRes.status === 404) {
+      await fetch(STORE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: `session_${token}`,
+          data: {
+            status: "activated",
+            token: token,
+            activated_at: new Date().toISOString(),
+            expires_at: expiresAt,
+            is_premium: false
+          }
+        })
+      }).catch(() => null);
+    }
+
     return res.status(200).json({
       ok: true,
       status: "activated",

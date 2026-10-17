@@ -9,6 +9,14 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
+  let clientToken = null;
+  if (req.body) {
+    try {
+      const b = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+      clientToken = b.token || null;
+    } catch {}
+  }
+
   try {
     const storeRes = await fetch(STORE_URL, {
       method: "POST",
@@ -17,6 +25,7 @@ export default async function handler(req, res) {
         name: "csw_session",
         data: {
           status: "pending",
+          client_token: clientToken,
           created_at: new Date().toISOString(),
           expires_at: null,
           is_premium: false
@@ -24,7 +33,7 @@ export default async function handler(req, res) {
       })
     });
     const storeData = await storeRes.json();
-    const token = storeData.id;
+    const token = storeData.id || clientToken || ("csw_" + Math.random().toString(36).substring(2, 15));
     const activationUrl = `https://cyaswtools.vercel.app/activate/${token}`;
 
     return res.status(200).json({
@@ -34,7 +43,7 @@ export default async function handler(req, res) {
       duration_minutes: 5
     });
   } catch (err) {
-    const fallbackToken = "csw_" + Math.random().toString(36).substring(2, 15);
+    const fallbackToken = clientToken || ("csw_" + Math.random().toString(36).substring(2, 15));
     return res.status(200).json({
       ok: true,
       token: fallbackToken,
