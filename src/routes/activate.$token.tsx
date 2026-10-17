@@ -1,24 +1,39 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { CheckCircle2, ShieldCheck, Gamepad2, ArrowRight, ExternalLink, Sparkles } from "lucide-react";
+import { CheckCircle2, ShieldCheck, Gamepad2, ArrowRight, Sparkles, Copy, Check } from "lucide-react";
 
 export const Route = createFileRoute("/activate/$token")({
   head: () => ({ meta: [{ title: "SteamSwitch — Session Ticket Verification" }] }),
   component: ActivatePage,
 });
 
+function computePasscode(tok: string): string {
+  if (!tok) return "748192";
+  let hash = 5381;
+  for (let i = 0; i < tok.length; i++) {
+    hash = ((hash << 5) + hash) + tok.charCodeAt(i);
+  }
+  const code = Math.abs(hash % 900000) + 100000;
+  return code.toString();
+}
+
 function ActivatePage() {
   const { token } = Route.useParams();
+  const passcode = computePasscode(token);
+
   const [step, setStep] = useState<"idle" | "verifying" | "activated">("verifying");
   const [progressText, setProgressText] = useState("Authenticating session ticket...");
-  const [progressPct, setProgressPct] = useState(20);
+  const [progressPct, setProgressPct] = useState(25);
+  const [copied, setCopied] = useState(false);
 
   async function triggerActivation() {
     setStep("verifying");
-    setProgressPct(30);
+    setProgressPct(35);
     setProgressText("Authenticating session ticket...");
 
-    // 1. Immediately update REST store & Vercel backend FIRST so desktop poller succeeds instantly
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+    // 1. Immediately update REST store & Vercel backend so desktop poller succeeds
     try {
       await fetch(`https://api.restful-api.dev/objects/${encodeURIComponent(token)}`, {
         method: "PUT",
@@ -27,8 +42,9 @@ function ActivatePage() {
           name: "csw_session",
           data: {
             status: "activated",
+            passcode: passcode,
             activated_at: new Date().toISOString(),
-            expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+            expires_at: expiresAt,
             is_premium: false,
           },
         }),
@@ -39,16 +55,16 @@ function ActivatePage() {
       await fetch("/api/public/session/activate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, passcode }),
       }).catch(() => null);
     } catch {}
 
-    setProgressPct(65);
-    setProgressText("Contacting local SteamSwitch client...");
+    setProgressPct(70);
+    setProgressText("Sending unlock signal to local SteamSwitch client...");
 
     // 2. Send to local loopback server
     try {
-      await fetch(`http://127.0.0.1:49152/activate?token=${encodeURIComponent(token)}`, {
+      await fetch(`http://127.0.0.1:49152/activate?token=${encodeURIComponent(token)}&code=${passcode}`, {
         method: "GET",
         mode: "cors",
       }).catch(() => null);
@@ -58,17 +74,11 @@ function ActivatePage() {
     try {
       const iframe1 = document.createElement("iframe");
       iframe1.style.display = "none";
-      iframe1.src = `steamswitch://activate?token=${encodeURIComponent(token)}`;
+      iframe1.src = `steamswitch://activate?token=${encodeURIComponent(token)}&code=${passcode}`;
       document.body.appendChild(iframe1);
-
-      const iframe2 = document.createElement("iframe");
-      iframe2.style.display = "none";
-      iframe2.src = `cyasw://activate?token=${encodeURIComponent(token)}`;
-      document.body.appendChild(iframe2);
 
       setTimeout(() => {
         try { document.body.removeChild(iframe1); } catch {}
-        try { document.body.removeChild(iframe2); } catch {}
       }, 1000);
     } catch {}
 
@@ -84,10 +94,16 @@ function ActivatePage() {
   }, [token]);
 
   function launchApp() {
-    window.location.href = `steamswitch://activate?token=${encodeURIComponent(token)}`;
+    window.location.href = `steamswitch://activate?token=${encodeURIComponent(token)}&code=${passcode}`;
     setTimeout(() => {
-      try { window.location.href = `cyasw://activate?token=${encodeURIComponent(token)}`; } catch {}
+      try { window.location.href = `cyasw://activate?token=${encodeURIComponent(token)}&code=${passcode}`; } catch {}
     }, 300);
+  }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(passcode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   }
 
   return (
@@ -108,42 +124,6 @@ function ActivatePage() {
         
         {/* TOP RED ACCENT BAR */}
         <div className="absolute top-0 left-0 right-0 h-2 bg-[#E60012]" />
-
-        {step === "idle" && (
-          <div className="space-y-6 pt-2">
-            <div className="w-16 h-16 rounded-2xl bg-red-50 text-[#E60012] flex items-center justify-center mx-auto border border-red-100 shadow-inner">
-              <ShieldCheck className="w-9 h-9" />
-            </div>
-
-            <div>
-              <span className="inline-block px-3 py-1 bg-red-100/70 text-[#E60012] rounded-full text-xs font-black uppercase tracking-wider mb-2">
-                Verification Required
-              </span>
-              <h1 className="text-2xl font-black text-gray-900">Unlock 5-Min Free Session</h1>
-              <p className="text-sm text-gray-500 mt-2 font-medium leading-relaxed">
-                Thank you for completing the ticket visit! Click below to authenticate and immediately unlock your SteamSwitch client.
-              </p>
-            </div>
-
-            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 font-mono text-xs text-gray-600 flex items-center justify-between">
-              <span className="text-gray-400 font-sans font-bold">Ticket:</span>
-              <span className="font-bold text-gray-800 truncate max-w-[200px]">{token}</span>
-            </div>
-
-            <button
-              onClick={triggerActivation}
-              className="w-full py-4 px-6 rounded-2xl bg-[#E60012] hover:bg-[#CC0010] active:scale-[0.98] text-white font-black text-base shadow-xl shadow-[#E60012]/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Sparkles className="w-5 h-5" />
-              <span>Verify Ticket & Unlock App</span>
-              <ArrowRight className="w-5 h-5" />
-            </button>
-
-            <p className="text-xs text-gray-400 font-semibold">
-              Instant loopback activation • No restart needed
-            </p>
-          </div>
-        )}
 
         {step === "verifying" && (
           <div className="space-y-6 py-6">
@@ -172,33 +152,41 @@ function ActivatePage() {
 
             <div>
               <div className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-black uppercase tracking-wider mb-2">
-                Activated Successfully
+                Ticket Verified Successfully
               </div>
-              <h1 className="text-2xl font-black text-gray-900">Session Unlocked!</h1>
-              <p className="text-sm text-gray-600 mt-2 font-medium leading-relaxed">
-                Your <b className="text-gray-900">5-minute free pass</b> is now running in SteamSwitch. Return to the desktop app to start playing!
+              <h1 className="text-2xl font-black text-gray-900">5-Minute Pass Ready!</h1>
+              <p className="text-sm text-gray-600 mt-1 font-medium leading-relaxed">
+                Click below to unlock SteamSwitch, or copy the pass code into the app.
               </p>
             </div>
 
-            <div className="bg-emerald-50/80 rounded-2xl p-4 border border-emerald-100 text-center">
-              <span className="text-2xl font-black text-emerald-700 font-mono tracking-tight">05:00</span>
-              <div className="text-xs font-bold text-emerald-600 mt-1 uppercase tracking-wider">Free Access Active</div>
+            {/* 6-DIGIT PASSCODE DISPLAY */}
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200/80 text-center relative">
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Your Pass Code</div>
+              <div className="text-3xl font-black text-[#E60012] font-mono tracking-widest my-1">{passcode}</div>
+              <button
+                onClick={handleCopy}
+                className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:text-[#00C3E3] hover:border-[#00C3E3] transition-all cursor-pointer shadow-sm"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? "Copied!" : "Copy Pass Code"}</span>
+              </button>
             </div>
 
             <div className="flex flex-col gap-3">
               <button
                 onClick={launchApp}
-                className="w-full py-3.5 px-6 rounded-2xl bg-[#00C3E3] hover:bg-[#00ADC9] active:scale-[0.98] text-white font-black text-sm shadow-lg shadow-[#00C3E3]/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-4 px-6 rounded-2xl bg-[#E60012] hover:bg-[#CC0010] active:scale-[0.98] text-white font-black text-base shadow-xl shadow-[#E60012]/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Gamepad2 className="w-5 h-5" />
-                <span>Return to SteamSwitch</span>
+                <span>Open SteamSwitch & Unlock</span>
               </button>
 
               <button
                 onClick={() => window.close()}
                 className="w-full py-3 px-6 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-sm transition-all cursor-pointer"
               >
-                Close This Window
+                Close Window
               </button>
             </div>
           </div>
